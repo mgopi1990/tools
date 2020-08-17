@@ -1,0 +1,70 @@
+#!/bin/bash
+
+## Fakesudo.
+## just invoke this when nonroot user tries sudo.
+## Some application are trying to run sudo for applications that it doesnt need previlege.
+## During those times, this might get handly.
+
+## This was done to fool RaspController that requests for sudo password
+## As a workaround we will be creating a new user and map fakesudo to sudo.
+
+## Did the below changes to make this work smooth.
+## Assuming I have created a new user guest to make this working for guest alone.
+## ssh guest@0.0
+## mkdir ~/bin
+## cp fakesudo ~/bin
+## ln -s ~/bin/fakesudo ~/bin/sudo
+## echo "PATH=/home/guest/bin/:/usr/local/bin:/usr/bin:/bin:/usr/games" >> ~/.ssh/environment
+
+cmd=''
+
+## options that use one more arg
+cmd_args="-g -h -p -u -U -r -t -C -T"
+
+arg_index=0
+skip_arg=0
+for arg in "$@"
+do
+	arg_index=`expr $arg_index + 1`
+	shift 
+
+	if [ $skip_arg -eq 1 ]
+	then
+		skip_arg=0
+		continue
+	fi
+
+	if [ "$arg" == '-h' ] && [ $arg_index -eq 1 ]
+	then
+		echo "Fake sudo. Just executes the command. Fails if previlege is not there"
+		exit 0	
+	fi 
+
+	## Check for options with args
+	for chk_arg in $cmd_args
+	do
+		if [ $arg == $chk_arg ]
+		then
+			skip_arg=1
+			break
+		fi 	
+	done
+
+	## Some match found; skip the next arg also
+	if [ $skip_arg -eq 1 ]
+	then
+		continue
+	fi
+
+	## One arg command
+	if [ ${arg:0:1} == '-' ]
+	then
+		continue
+	fi 
+
+	cmd="$arg $@"
+	break
+done
+
+#echo "$cmd"
+sh -c "$cmd"
